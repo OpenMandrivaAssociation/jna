@@ -9,6 +9,7 @@ Source0:        https://jna.dev.java.net/source/browse/*checkout*/jna/trunk/jnal
 BuildRequires:  java-rpmbuild >= 0:1.6
 BuildRequires:  ant
 BuildRequires:  ant-nodeps
+BuildRequires:  libx11-devel
 Group:          Development/Java
 Buildroot:      %{_tmppath}/%{name}-%{version}-%{release}-buildroot
 
