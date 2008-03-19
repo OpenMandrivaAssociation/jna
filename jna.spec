@@ -1,6 +1,6 @@
 Name:           jna
 Version:        3.0
-Release:        %mkrel 0.0.1
+Release:        %mkrel 0.0.2
 Epoch:          0
 Summary:        Dynamically access native libraries from Java without JNI
 License:        LGPL
@@ -33,8 +33,16 @@ and building JNI code for multiple platforms.
 Summary:        Javadoc for %{name}
 Group:          Development/Java
 
+%package examples
+Summary:	Examples for %{name}
+Group:		Development/Java
+Requires:	%{name} = %{version}-%{release}
+
 %description javadoc
 Javadoc for %{name}.
+
+%description examples
+Examples for %{name}.
 
 %prep
 %setup -q -c {name}
@@ -42,7 +50,7 @@ chmod 755 native/libffi/configure
 
 %build
 CLASSPATH="/usr/share/java/xalan-j2-serializer.jar" \
-%ant -DARCH="$MAKE_ARCH" -DCC="%__cc" jar native javadoc
+%ant -DARCH="$MAKE_ARCH" -DCC="%__cc" jar native javadoc examples
 
 %install
 %{__rm} -rf %{buildroot}
@@ -53,6 +61,8 @@ CLASSPATH="/usr/share/java/xalan-j2-serializer.jar" \
 %__install -d "%{buildroot}%{_javadir}"
 %__install -m0644 build/jna.jar "%{buildroot}%{_javadir}/%{name}-%{version}.jar"
 %__ln_s "%{name}-%{version}.jar" "%{buildroot}%{_javadir}/%{name}.jar"
+%__install -m0644 build/examples.jar "%{buildroot}%{_javadir}/%{name}-examples-%{version}.jar"
+%__ln_s "%{name}-examples-%{version}.jar" "%{buildroot}%{_javadir}/%{name}-examples.jar"
 
 %__install -d "%{buildroot}%{_javadocdir}"
 %__cp -a doc/javadoc "%{buildroot}%{_javadocdir}/%{name}-%{version}"
@@ -63,8 +73,13 @@ CLASSPATH="/usr/share/java/xalan-j2-serializer.jar" \
 
 %files
 %defattr(0644,root,root,0755)
-%{_javadir}/*.jar
+%{_javadir}/%{name}.jar
+%{_javadir}/%{name}-%{version}.jar
 %{_jnidir}/*.jar
+
+%files examples
+%{_javadir}/%{name}-examples.jar
+%{_javadir}/%{name}-examples-%{version}.jar
 
 %files javadoc
 %defattr(0644,root,root,0755)
