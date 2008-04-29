@@ -1,6 +1,6 @@
 Name:           jna
 Version:        3.0.2
-Release:        %mkrel 0.7.1
+Release:        %mkrel 0.7.2
 Summary:        Pure Java access to native libraries
 
 Group:          Development/Java
@@ -19,7 +19,7 @@ Patch1:         jna-3.0.2-loadlibrary.patch
 BuildRoot:      %{_tmppath}/%{name}-%{version}-%{release}-buildroot
 BuildRequires:  java-rpmbuild >= 1.6 ant jpackage-utils ant-nodeps
 BuildRequires:  libx11-devel libxt-devel libffi-devel
-
+Obsoletes: jna-examples
 
 %description
 JNA provides Java programs easy access to native shared libraries
