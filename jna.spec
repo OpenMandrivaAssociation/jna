@@ -1,6 +1,6 @@
 Name:           jna
 Version:        3.0.2
-Release:        %mkrel 0.7.2
+Release:        %mkrel 0.7.3
 Summary:        Pure Java access to native libraries
 
 Group:          Development/Java
