@@ -19,7 +19,6 @@ Patch1:         jna-3.0.2-loadlibrary.patch
 BuildRoot:      %{_tmppath}/%{name}-%{version}-%{release}-buildroot
 BuildRequires:  java-rpmbuild >= 1.6 ant jpackage-utils ant-nodeps
 BuildRequires:  libx11-devel libxt-devel libffi-devel
-Obsoletes: jna-examples
 
 %description
 JNA provides Java programs easy access to native shared libraries
@@ -35,6 +34,14 @@ Group:          Development/Java
 
 %description    javadoc
 This package contains the javadocs for %{name}.
+
+%package examples
+Summary:	Examples for %{name}
+Group:		Development/Java
+Requires:	%{name} = %{version}-%{release}
+
+%description examples
+Examples for %{name}.
 
 %prep
 %setup -q -n %{name}-%{version}
@@ -58,7 +65,7 @@ chmod 0644 LICENSE.txt
 %build
 # We pass -Ddynlink.native which comes from our patch because
 # upstream doesn't want to default to dynamic linking.
-%ant jar -Dcflags_extra.native="%{optflags}" -Ddynlink.native=true -Dnomixedjar.native=true
+%ant jar -Dcflags_extra.native="%{optflags}" -Ddynlink.native=true -Dnomixedjar.native=true examples
 %ant javadoc
 
 
@@ -79,6 +86,9 @@ install -m 755 build/native/libjnidispatch*.so %{buildroot}%{_libdir}/%{name}/
 %__cp -a doc/javadoc "%{buildroot}%{_javadocdir}/%{name}-%{version}"
 (cd %{buildroot}%{_javadocdir} && %{__ln_s} %{name}-%{version} %{name})
 
+%__install -m0644 build/examples.jar "%{buildroot}%{_javadir}/%{name}-examples-%{version}.jar"
+%__ln_s "%{name}-examples-%{version}.jar" "%{buildroot}%{_javadir}/%{name}-examples.jar"
+
 %clean
 %{__rm} -rf %{buildroot}
 
@@ -86,7 +96,12 @@ install -m 755 build/native/libjnidispatch*.so %{buildroot}%{_libdir}/%{name}/
 %defattr(0644,root,root,0755)
 %doc LICENSE.txt
 %{_libdir}/%{name}
-%{_javadir}/*.jar
+%{_javadir}/%{name}.jar
+%{_javadir}/%{name}-%{version}.jar
+
+%files examples
+%{_javadir}/%{name}-examples.jar
+%{_javadir}/%{name}-examples-%{version}.jar
 
 %files javadoc
 %defattr(0644,root,root,0755)
