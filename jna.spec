@@ -87,7 +87,7 @@ install -m 755 build*/native/libjnidispatch*.so %{buildroot}%{_libdir}/%{name}/
 %__cp -a doc/javadoc "%{buildroot}%{_javadocdir}/%{name}-%{version}"
 (cd %{buildroot}%{_javadocdir} && %{__ln_s} %{name}-%{version} %{name})
 
-%__install -m0644 build/examples.jar "%{buildroot}%{_javadir}/%{name}-examples-%{version}.jar"
+%__install -m0644 build*/examples.jar "%{buildroot}%{_javadir}/%{name}-examples-%{version}.jar"
 %__ln_s "%{name}-examples-%{version}.jar" "%{buildroot}%{_javadir}/%{name}-examples.jar"
 
 %clean
