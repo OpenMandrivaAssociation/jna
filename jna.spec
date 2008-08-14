@@ -1,6 +1,6 @@
 Name:           jna
-Version:        3.0.2
-Release:        %mkrel 4.7.3
+Version:        3.0.4
+Release:        %mkrel 0.1.svn630.1
 Summary:        Pure Java access to native libraries
 
 Group:          Development/Java
@@ -10,12 +10,12 @@ URL:            https://jna.dev.java.net/
 # following commands to generate the tarball:
 #   svn export https://jna.dev.java.net/svn/jna/tags/%{version}/jnalib/ --username guest jna-%{version}
 #   tar -cjf jna-%{version}.tar.bz2 jna-%{version}
-Source0:        %{name}-%{version}.tar.bz2
-# https://jna.dev.java.net/issues/show_bug.cgi?id=60
-Patch0:         jna-3.0.2-dynlink-and-cflags.patch
+Source0:        %{name}-%{version}.svn630.tar.bz2
 # This patch is Fedora-specific for now until we get the huge
 # JNI library location mess sorted upstream
 Patch1:         jna-3.0.2-loadlibrary.patch
+# Will send upstream...
+Patch2:         jna-3.0.4-nomixedjar.patch
 BuildRoot:      %{_tmppath}/%{name}-%{version}-%{release}-buildroot
 BuildRequires:  java-rpmbuild >= 1.6 ant jpackage-utils ant-nodeps
 BuildRequires:  libx11-devel libxt-devel libffi-devel
@@ -44,9 +44,10 @@ Requires:	%{name} = %{version}-%{release}
 Examples for %{name}.
 
 %prep
-%setup -q -n %{name}-%{version}
-%patch0 -p1
+%setup -q -n %{name}-%{version}-svn630
+
 sed -e 's|@JNIPATH@|%{_libdir}/%{name}|' %{PATCH1} | patch -p1
+%patch2 -p1
 
 # all java binaries must be removed from the sources
 find . -name '*.jar' -exec rm -f '{}' \;
@@ -73,13 +74,13 @@ chmod 0644 LICENSE.txt
 rm -rf %{buildroot}
 
 # jars
-install -D -m 644 build/%{name}.jar %{buildroot}%{_javadir}/%{name}-%{version}.jar
+install -D -m 644 build*/%{name}.jar %{buildroot}%{_javadir}/%{name}-%{version}.jar
 (cd %{buildroot}%{_javadir}/; for jar in `ls *-%{version}.jar`; do ln -s $jar `echo $jar | sed -e 's/-%{version}//'`; done)
 # NOTE: JNA has highly custom code to look for native jars in this
 # directory.  Since this roughly matches the jpackage guidelines,
 # we'll leave it unchanged.
 install -d -m 755 %{buildroot}%{_libdir}/%{name}
-install -m 755 build/native/libjnidispatch*.so %{buildroot}%{_libdir}/%{name}/
+install -m 755 build*/native/libjnidispatch*.so %{buildroot}%{_libdir}/%{name}/
 
 # javadocs
 %__install -d "%{buildroot}%{_javadocdir}"
@@ -96,8 +97,7 @@ install -m 755 build/native/libjnidispatch*.so %{buildroot}%{_libdir}/%{name}/
 %defattr(0644,root,root,0755)
 %doc LICENSE.txt
 %{_libdir}/%{name}
-%{_javadir}/%{name}.jar
-%{_javadir}/%{name}-%{version}.jar
+%{_javadir}/*
 
 %files examples
 %{_javadir}/%{name}-examples.jar
