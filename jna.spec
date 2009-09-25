@@ -33,6 +33,7 @@ BuildRoot:      %{_tmppath}/%{name}-%{version}-%{release}-buildroot
 
 BuildRequires:  java-devel >= 1.6 ant jpackage-utils ant-nodeps
 BuildRequires:  libx11-devel libxt-devel libffi-devel
+BuildRequires:  java-rpmbuild >= 0:1.5.32
 # We manually require libffi because find-requires doesn't work
 # inside jars.
 Requires:       java >= 0:1.6.0 jpackage-utils
