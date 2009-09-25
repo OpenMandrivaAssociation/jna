@@ -1,6 +1,6 @@
 Name:           jna
-Version:        3.0.4
-Release:        %mkrel 0.1.svn630.3
+Version:        3.0.9
+Release:        %mkrel 1
 Summary:        Pure Java access to native libraries
 
 Group:          Development/Java
@@ -9,16 +9,33 @@ URL:            https://jna.dev.java.net/
 # The source for this package was pulled from upstream's vcs. Use the
 # following commands to generate the tarball:
 #   svn export https://jna.dev.java.net/svn/jna/tags/%{version}/jnalib/ --username guest jna-%{version}
+#   rm dist/*
 #   tar -cjf jna-%{version}.tar.bz2 jna-%{version}
-Source0:        %{name}-%{version}.svn630.tar.bz2
+Source0:        %{name}-%{version}.tar.bz2
 # This patch is Fedora-specific for now until we get the huge
 # JNI library location mess sorted upstream
 Patch1:         jna-3.0.2-loadlibrary.patch
-# Will send upstream...
-Patch2:         jna-3.0.4-nomixedjar.patch
+# The X11 tests currently segfault; overall I think the X11 JNA stuff is just a 
+# Really Bad Idea, for relying on AWT internals, using the X11 API at all,
+# and using a complex API like X11 through JNA just increases the potential
+# for problems.
+Patch2:         jna-tests-headless.patch
+# https://jna.dev.java.net/issues/show_bug.cgi?id=90
+Patch3:         jna-3.0.4-nativemapped-array.patch
+# Not yet sent upstream - haven't decided whether it's a good idea yet,
+# but keeping around here for now.
+Patch5:         jna-callback-exception.patch
+# https://jna.dev.java.net/issues/show_bug.cgi?id=95
+Patch6:		jna-3.0.9-linux-nomaplibrary.patch
+# https://jna.dev.java.net/issues/show_bug.cgi?id=98
+Patch7:         jna-3.0.9-processopen.patch
 BuildRoot:      %{_tmppath}/%{name}-%{version}-%{release}-buildroot
-BuildRequires:  java-rpmbuild >= 1.6 ant jpackage-utils ant-nodeps
+
+BuildRequires:  java-devel >= 1.6 ant jpackage-utils ant-nodeps
 BuildRequires:  libx11-devel libxt-devel libffi-devel
+# We manually require libffi because find-requires doesn't work
+# inside jars.
+Requires:       java >= 0:1.6.0 jpackage-utils
 
 %description
 JNA provides Java programs easy access to native shared libraries
@@ -35,19 +52,15 @@ Group:          Development/Java
 %description    javadoc
 This package contains the javadocs for %{name}.
 
-%package examples
-Summary:	Examples for %{name}
-Group:		Development/Java
-Requires:	%{name} = %{version}-%{release}
-
-%description examples
-Examples for %{name}.
 
 %prep
-%setup -q -n %{name}-%{version}-svn630
-
+%setup -q -n %{name}-%{version}
 sed -e 's|@JNIPATH@|%{_libdir}/%{name}|' %{PATCH1} | patch -p1
-%patch2 -p1
+%patch2 -p1 -b .tests-headless
+%patch3 -p1 -b .nativemapped-array
+#%patch5 -p1 -b .callback-exception
+%patch6 -p1 -b .linux-nomaplibrary
+%patch7 -p1 -b .processopen
 
 # all java binaries must be removed from the sources
 find . -name '*.jar' -exec rm -f '{}' \;
@@ -55,9 +68,6 @@ find . -name '*.class' -exec rm -f '{}' \;
 
 # remove internal copy of libffi
 rm -rf native/libffi
-
-# remove random unused zips
-rm dist/{src,doc}.zip
 
 # clean LICENSE.txt
 sed -i 's/\r//' LICENSE.txt
@@ -87,11 +97,10 @@ install -m 755 build*/native/libjnidispatch*.so %{buildroot}%{_libdir}/%{name}/
 %__cp -a doc/javadoc "%{buildroot}%{_javadocdir}/%{name}-%{version}"
 (cd %{buildroot}%{_javadocdir} && %{__ln_s} %{name}-%{version} %{name})
 
-%__install -m0644 build*/examples.jar "%{buildroot}%{_javadir}/%{name}-examples-%{version}.jar"
-%__ln_s "%{name}-examples-%{version}.jar" "%{buildroot}%{_javadir}/%{name}-examples.jar"
 
 %clean
 %{__rm} -rf %{buildroot}
+
 
 %files
 %defattr(0644,root,root,0755)
@@ -99,12 +108,8 @@ install -m 755 build*/native/libjnidispatch*.so %{buildroot}%{_libdir}/%{name}/
 %{_libdir}/%{name}
 %{_javadir}/*
 
-%files examples
-%{_javadir}/%{name}-examples.jar
-%{_javadir}/%{name}-examples-%{version}.jar
-
 %files javadoc
 %defattr(0644,root,root,0755)
 %{_javadocdir}/%{name}-%{version}
 %{_javadocdir}/%{name}
- 
+
