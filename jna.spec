@@ -1,6 +1,6 @@
 Name:           jna
 Version:        3.2.4
-Release:        %mkrel 1
+Release:        %mkrel 2
 Summary:        Pure Java access to native libraries
 
 Group:          Development/Java
@@ -48,6 +48,7 @@ This package contains the javadocs for %{name}.
 %package        examples
 Summary:        Examples for %{name}
 Group:          Development/Java
+Requires:	%{name} = %{version}
 
 %description    examples
 This package contains the examples for %{name}.
