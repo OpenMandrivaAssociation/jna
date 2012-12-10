@@ -1,6 +1,6 @@
 Name:           jna
 Version:        3.2.7
-Release:        %mkrel 6
+Release:        7
 Summary:        Pure Java access to native libraries
 
 Group:          Development/Java
@@ -31,7 +31,7 @@ BuildRoot:      %{_tmppath}/%{name}-%{version}-%{release}
 # We manually require libffi because find-requires doesn't work
 # inside jars.
 Requires:       java  >= 0:1.6.0
-Requires:       jpackage-utils, libffi
+Requires:       jpackage-utils
 Requires(post):	jpackage-utils
 Requires(postun): jpackage-utils
 BuildRequires:  java-devel >= 0:1.6.0
@@ -160,5 +160,71 @@ rm -rf %{buildroot}
 %files contrib
 %defattr(-,root,root,-)
 %{_javadir}/%{name}
+
+
+
+
+%changelog
+* Tue Feb 21 2012 Jon Dill <dillj@mandriva.org> 3.2.7-6mdv2012.0
++ Revision: 778765
+- rebuild against new version of libffi4
+
+* Sun Nov 27 2011 Guilherme Moro <guilherme@mandriva.com> 3.2.7-5
++ Revision: 734052
+- rebuild
+- imported package jna
+
+* Mon Dec 06 2010 Oden Eriksson <oeriksson@mandriva.com> 3.2.4-3mdv2011.0
++ Revision: 612457
+- the mass rebuild of 2010.1 packages
+
+* Thu Nov 26 2009 Jérôme Brenier <incubusss@mandriva.org> 3.2.4-2mdv2010.1
++ Revision: 470390
+- add requires jna to jna-examples
+
+* Thu Nov 26 2009 Jérôme Brenier <incubusss@mandriva.org> 3.2.4-1mdv2010.1
++ Revision: 470387
+- new version 3.2.4
+- new subpackage jna-examples
+- resync with Fedora patches
+
+* Fri Sep 25 2009 Jaroslav Tulach <jtulach@mandriva.org> 3.0.9-1mdv2010.0
++ Revision: 448704
+- Updating to 3.0.9 version
+
+* Fri Sep 11 2009 Thierry Vignaud <tv@mandriva.org> 3.0.4-0.1.svn630.3mdv2010.0
++ Revision: 438039
+- rebuild
+
+* Fri Mar 06 2009 Antoine Ginies <aginies@mandriva.com> 3.0.4-0.1.svn630.2mdv2009.1
++ Revision: 350277
+- 2009.1 rebuild
+
+* Thu Aug 14 2008 Alexander Kurtakov <akurtakov@mandriva.org> 3.0.4-0.1.svn630.1mdv2009.0
++ Revision: 271886
+- fix examples install on 64bit
+- new version 3.0.4
+
+  + Thierry Vignaud <tv@mandriva.org>
+    - rebuild early 2009.0 package (before pixel changes)
+
+* Wed Apr 30 2008 Alexander Kurtakov <akurtakov@mandriva.org> 3.0.2-0.7.3mdv2009.0
++ Revision: 199450
+- bump release
+- reintroduce jna-examples, needed by atunes
+
+* Tue Apr 29 2008 Alexander Kurtakov <akurtakov@mandriva.org> 3.0.2-0.7.2mdv2009.0
++ Revision: 198927
+- obsolete old examples package
+- new version
+
+* Wed Mar 19 2008 Nicolas Vigier <nvigier@mandriva.com> 0:3.0-0.0.2mdv2008.1
++ Revision: 188913
+- build jna-examples.jar because atunes needs it
+
+* Wed Feb 27 2008 Alexander Kurtakov <akurtakov@mandriva.org> 0:3.0-0.0.1mdv2008.1
++ Revision: 175929
+- add libx11-devel BR
+- import jna
 
 
