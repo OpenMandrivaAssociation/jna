@@ -1,6 +1,6 @@
 Name:           jna
 Version:        3.2.7
-Release:        7
+Release:        8
 Summary:        Pure Java access to native libraries
 
 Group:          Development/Java
@@ -26,7 +26,6 @@ Patch3:         jna-3.2.7-javadoc.patch
 Patch4:         jna-3.2.7-gcj-javadoc.patch
 # junit cames from rpm
 Patch5:         jna-3.2.5-junit.patch
-BuildRoot:      %{_tmppath}/%{name}-%{version}-%{release}
 
 # We manually require libffi because find-requires doesn't work
 # inside jars.
