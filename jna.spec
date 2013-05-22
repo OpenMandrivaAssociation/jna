@@ -34,9 +34,11 @@ Requires:       jpackage-utils
 Requires(post):	jpackage-utils
 Requires(postun): jpackage-utils
 BuildRequires:  java-devel >= 0:1.6.0
-BuildRequires:  jpackage-utils, libffi-devel
+BuildRequires:  jpackage-utils
+BuildRequires:  pkgconfig(libffi)
 BuildRequires:  ant, ant-junit, ant-nodeps, ant-trax, junit
-BuildRequires:  pkgconfig(x11), libxt-devel
+BuildRequires:  pkgconfig(x11)
+BuildRequires:  pkgconfig(xt)
 
 
 %description
