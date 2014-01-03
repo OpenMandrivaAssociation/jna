@@ -1,7 +1,7 @@
-%{_javapackages_macros:%_javapackages_macros}
+%{?_javapackages_macros:%_javapackages_macros}
 Name:           jna
 Version:        3.5.2
-Release:        2.0%{?dist}
+Release:        2.1%{?dist}
 Summary:        Pure Java access to native libraries
 
 
@@ -127,6 +127,8 @@ find contrib -name '*.jar' -exec cp {} %{buildroot}%{_javadir}/%{name}/ \;
 install -d -m 755 %{buildroot}%{_libdir}/%{name}
 install -m 755 build*/native/libjnidispatch*.so %{buildroot}%{_libdir}/%{name}/
 
+# OpenMandriva
+%if 0%{?fedora}
 %if 0%{?fedora} >= 9 || 0%{?rhel} > 5
 # install maven pom file
 install -Dm 644 pom-%{name}.xml %{buildroot}%{_mavenpomdir}/JPP-%{name}.pom
@@ -142,6 +144,17 @@ mv %{buildroot}%{_mavendepmapfragdir}/%{name} %{buildroot}%{_mavendepmapfragdir}
 %add_to_maven_depmap net.java.dev.jna %{name} %{version} JPP %{name}
 %endif
 %endif
+# OpenMandriva
+%else
+# install maven pom file
+install -Dm 644 pom-%{name}.xml %{buildroot}%{_mavenpomdir}/JPP-%{name}.pom
+install -Dm 644 pom-platform.xml %{buildroot}%{_mavenpomdir}/JPP.%{name}-platform.pom
+
+# ... and maven depmap
+%add_maven_depmap JPP-%{name}.pom %{name}.jar
+%add_maven_depmap JPP.%{name}-platform.pom -f platform %{name}/platform.jar
+# OpenMandriva
+%endif
 
 # javadocs
 install -p -d -m 755 %{buildroot}%{_javadocdir}/%{name}
@@ -155,7 +168,10 @@ cp -a doc/javadoc/* %{buildroot}%{_javadocdir}/%{name}
 #ant -Dcflags_extra.native="%{optflags}" -Ddynlink.native=true -Dnomixedjar.native=true test
 #%endif
 #%endif
-
+%if 0%{?fedora}
+%else
+sed -i "s|3.5.2-SNAPSHOT|3.5.2.SNAPSHOT|" %{buildroot}%{_mavendepmapfragdir}/*
+%endif
 
 %clean
 rm -rf %{buildroot}
@@ -181,7 +197,12 @@ rm -rf %{buildroot}
 %doc LICENSE OTHERS README.md CHANGES.md TODO
 %{_libdir}/%{name}
 %{_javadir}/%{name}.jar
+%if 0%{?fedora}
 %if 0%{?fedora} >= 9 || 0%{?rhel} > 5
+%{_mavenpomdir}/JPP-%{name}.pom
+%{_mavendepmapfragdir}/%{name}
+%endif
+%else
 %{_mavenpomdir}/JPP-%{name}.pom
 %{_mavendepmapfragdir}/%{name}
 %endif
@@ -196,7 +217,12 @@ rm -rf %{buildroot}
 %files contrib
 %defattr(-,root,root,-)
 %{_javadir}/%{name}
+%if 0%{?fedora}
 %if 0%{?fedora} >= 9 || 0%{?rhel} > 5
+%{_mavenpomdir}/JPP.%{name}-platform.pom
+%{_mavendepmapfragdir}/%{name}-platform
+%endif
+%else
 %{_mavenpomdir}/JPP.%{name}-platform.pom
 %{_mavendepmapfragdir}/%{name}-platform
 %endif
