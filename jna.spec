@@ -1,44 +1,47 @@
+%{_javapackages_macros:%_javapackages_macros}
 Name:           jna
-Version:        3.2.7
-Release:        8
+Version:        3.5.2
+Release:        2.0%{?dist}
 Summary:        Pure Java access to native libraries
 
-Group:          Development/Java
+
 License:        LGPLv2+
 URL:            https://jna.dev.java.net/
 # The source for this package was pulled from upstream's vcs. Use the
 # following commands to generate the tarball:
-#   svn export https://jna.dev.java.net/svn/jna/tags/%{version}/jnalib/ --username guest jna-%{version}
-#   rm -rf jna-%{version}/dist/*
+#   https://github.com/twall/jna/tarball/%{version}
+#   tar xzf twall-jna-%{version}*.tar.gz
+#   mv twall-jna-* jna-%{version}
+#   rm -rf jna-%{version}/{dist/*,www}
 #   tar cjf ~/rpm/SOURCES/jna-%{version}.tar.bz2 jna-%{version}
 Source0:        %{name}-%{version}.tar.bz2
-Source1:	%{name}-pom.xml
+Source1:	package-list
+Patch0:         jna-3.5.0-build.patch
 # This patch is Fedora-specific for now until we get the huge
 # JNI library location mess sorted upstream
-Patch1:         jna-3.2.5-loadlibrary.patch
+Patch1:         jna-3.5.2-loadlibrary.patch
 # The X11 tests currently segfault; overall I think the X11 JNA stuff is just a 
 # Really Bad Idea, for relying on AWT internals, using the X11 API at all,
 # and using a complex API like X11 through JNA just increases the potential
 # for problems.
-Patch2:         jna-3.2.4-tests-headless.patch
-Patch3:         jna-3.2.7-javadoc.patch
+Patch2:         jna-3.4.0-tests-headless.patch
 # Build using GCJ javadoc
-Patch4:         jna-3.2.7-gcj-javadoc.patch
+Patch3:         jna-3.5.2-gcj-javadoc.patch
 # junit cames from rpm
-Patch5:         jna-3.2.5-junit.patch
+Patch4:         jna-3.5.2-junit.patch
+BuildRoot:      %{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
 
 # We manually require libffi because find-requires doesn't work
 # inside jars.
-Requires:       java  >= 0:1.6.0
-Requires:       jpackage-utils
+Requires:       java, jpackage-utils
 Requires(post):	jpackage-utils
 Requires(postun): jpackage-utils
-BuildRequires:  java-devel >= 0:1.6.0
-BuildRequires:  jpackage-utils
-BuildRequires:  pkgconfig(libffi)
-BuildRequires:  ant, ant-junit, ant-nodeps, ant-trax, junit
-BuildRequires:  pkgconfig(x11)
-BuildRequires:  pkgconfig(xt)
+BuildRequires:  java-devel, jpackage-utils, ffi-devel
+BuildRequires:  ant, ant-junit, junit
+%if 0%{?rhel} && 0%{?rhel} < 7
+BuildRequires:	ant-nodeps, ant-trax
+%endif
+BuildRequires:  libxt-devel
 
 
 %description
@@ -52,8 +55,8 @@ of use take priority.
 
 %package        javadoc
 Summary:        Javadocs for %{name}
-Group:          Development/Java
-Requires:       %{name} = %{version}-%{release}
+
+BuildArch:      noarch
 
 
 %description    javadoc
@@ -62,9 +65,12 @@ This package contains the javadocs for %{name}.
 
 %package        contrib
 Summary:        Contrib for %{name}
-Group:          Development/Java
+
 Requires:       %{name} = %{version}-%{release}
 Obsoletes:      %{name}-examples
+
+BuildArch:      noarch
+
 
 
 %description    contrib
@@ -73,19 +79,18 @@ This package contains the contributed examples for %{name}.
 
 %prep
 %setup -q -n %{name}-%{version}
+cp %{SOURCE1} .
+%patch0 -p1 -b .build
 sed -e 's|@JNIPATH@|%{_libdir}/%{name}|' %{PATCH1} | patch -p1
 %patch2 -p1 -b .tests-headless
-%patch3 -p1 -b .javadoc
-# temporary hach for patch3 on epel5
 chmod -Rf a+rX,u+w,g-w,o-w .
-%patch4 -p0 -b .gcj-javadoc
-%patch5 -p1 -b .junit
-cp %{SOURCE1} ./
+%patch3 -p0 -b .gcj-javadoc
+%patch4 -p1 -b .junit
 
 # UnloadTest fail during build since we modify class loading
 rm test/com/sun/jna/JNAUnloadTest.java
 # current bug: https://jna.dev.java.net/issues/show_bug.cgi?id=155
-rm test/com/sun/jna/DirectTest.java
+#rm test/com/sun/jna/DirectTest.java
 
 # all java binaries must be removed from the sources
 #find . -name '*.jar' -delete
@@ -96,24 +101,24 @@ find . -name '*.class' -delete
 rm -rf native/libffi
 
 # clean LICENSE.txt
-sed -i 's/\r//' LICENSE.txt
-chmod 0644 LICENSE.txt
+sed -i 's/\r//' LICENSE
+
+chmod -c 0644 LICENSE OTHERS CHANGES.md
 
 
 %build
 # We pass -Ddynlink.native which comes from our patch because
 # upstream doesn't want to default to dynamic linking.
-ant -Dcflags_extra.native="%{optflags}" -Ddynlink.native=true -Dnomixedjar.native=true jar contrib-jars javadoc
+ant -Dcflags_extra.native="%{optflags}" -Ddynlink.native=true -Dnomixedjar.native=true compile native javadoc jar contrib-jars
+#ant -Dcflags_extra.native="%{optflags}" -Ddynlink.native=true -Dnomixedjar.native=true clean dist
 # remove compiled contribs
 find contrib -name build -exec rm -rf {} \; || :
-sed -i "s/VERSION/%{version}/" %{name}-pom.xml
 
 %install
 rm -rf %{buildroot}
 
 # jars
-install -D -m 644 build*/%{name}.jar %{buildroot}%{_javadir}/%{name}-%{version}.jar
-(cd %{buildroot}%{_javadir}/; for jar in `ls *-%{version}.jar`; do ln -s $jar `echo $jar | sed -e 's/-%{version}//'`; done)
+install -D -m 644 build*/%{name}.jar %{buildroot}%{_javadir}/%{name}.jar
 install -d -m 755 %{buildroot}%{_javadir}/%{name}
 find contrib -name '*.jar' -exec cp {} %{buildroot}%{_javadir}/%{name}/ \;
 # NOTE: JNA has highly custom code to look for native jars in this
@@ -122,110 +127,241 @@ find contrib -name '*.jar' -exec cp {} %{buildroot}%{_javadir}/%{name}/ \;
 install -d -m 755 %{buildroot}%{_libdir}/%{name}
 install -m 755 build*/native/libjnidispatch*.so %{buildroot}%{_libdir}/%{name}/
 
+%if 0%{?fedora} >= 9 || 0%{?rhel} > 5
 # install maven pom file
-install -Dm 644 %{name}-pom.xml %{buildroot}%{_mavenpomdir}/JPP.%{name}.pom
+install -Dm 644 pom-%{name}.xml %{buildroot}%{_mavenpomdir}/JPP-%{name}.pom
+install -Dm 644 pom-platform.xml %{buildroot}%{_mavenpomdir}/JPP.%{name}-platform.pom
+
 # ... and maven depmap
+%if 0%{?fedora} >= 9
+%add_maven_depmap JPP-%{name}.pom %{name}.jar
+%add_maven_depmap JPP.%{name}-platform.pom -f platform %{name}/platform.jar
+%else
+%add_to_maven_depmap net.java.dev.jna jna-platform %{version} JPP jna-platform
+mv %{buildroot}%{_mavendepmapfragdir}/%{name} %{buildroot}%{_mavendepmapfragdir}/%{name}-platform
 %add_to_maven_depmap net.java.dev.jna %{name} %{version} JPP %{name}
+%endif
+%endif
 
 # javadocs
-install -p -d -m 755 %{buildroot}%{_javadocdir}/%{name}-%{version}
-cp -a doc/javadoc/* %{buildroot}%{_javadocdir}/%{name}-%{version}
+install -p -d -m 755 %{buildroot}%{_javadocdir}/%{name}
+cp -a doc/javadoc/* %{buildroot}%{_javadocdir}/%{name}
+
+
+#%if 0%{?rhel} >= 6 || 0%{?fedora} >= 9
+#%if 0%{?fedora} >= 9
+#%ifnarch ppc s390 s390x
+#%check
+#ant -Dcflags_extra.native="%{optflags}" -Ddynlink.native=true -Dnomixedjar.native=true test
+#%endif
+#%endif
+
 
 %clean
 rm -rf %{buildroot}
 
 
+%if 0%{?rhel} > 5
 %post
 %update_maven_depmap
-
 
 %postun
 %update_maven_depmap
 
+%post contrib
+%update_maven_depmap
+
+%postun contrib
+%update_maven_depmap
+%endif
+
 
 %files
 %defattr(-,root,root,-)
-%doc LICENSE.txt release-notes.html 
+%doc LICENSE OTHERS README.md CHANGES.md TODO
 %{_libdir}/%{name}
 %{_javadir}/%{name}.jar
-%{_javadir}/%{name}-%{version}.jar
-%{_mavenpomdir}/*.pom
+%if 0%{?fedora} >= 9 || 0%{?rhel} > 5
+%{_mavenpomdir}/JPP-%{name}.pom
 %{_mavendepmapfragdir}/%{name}
+%endif
 
 
 %files javadoc
 %defattr(-,root,root,-)
-%{_javadocdir}/%{name}-%{version}
+%doc LICENSE
+%{_javadocdir}/%{name}
 
 
 %files contrib
 %defattr(-,root,root,-)
 %{_javadir}/%{name}
-
-
+%if 0%{?fedora} >= 9 || 0%{?rhel} > 5
+%{_mavenpomdir}/JPP.%{name}-platform.pom
+%{_mavendepmapfragdir}/%{name}-platform
+%endif
 
 
 %changelog
-* Tue Feb 21 2012 Jon Dill <dillj@mandriva.org> 3.2.7-6mdv2012.0
-+ Revision: 778765
-- rebuild against new version of libffi4
+* Fri Jun 28 2013 Mikolaj Izdebski <mizdebsk@redhat.com> - 3.5.2-2
+- Fix ant-trax and ant-nodeps BR on RHEL
 
-* Sun Nov 27 2011 Guilherme Moro <guilherme@mandriva.com> 3.2.7-5
-+ Revision: 734052
-- rebuild
-- imported package jna
+* Thu Apr 25 2013 Levente Farkas <lfarkas@lfarkas.org> - 3.5.2-1
+- Update to 3.5.2
 
-* Mon Dec 06 2010 Oden Eriksson <oeriksson@mandriva.com> 3.2.4-3mdv2011.0
-+ Revision: 612457
-- the mass rebuild of 2010.1 packages
+* Thu Feb 14 2013 Fedora Release Engineering <rel-eng@lists.fedoraproject.org> - 3.5.0-2
+- Rebuilt for https://fedoraproject.org/wiki/Fedora_19_Mass_Rebuild
 
-* Thu Nov 26 2009 Jérôme Brenier <incubusss@mandriva.org> 3.2.4-2mdv2010.1
-+ Revision: 470390
-- add requires jna to jna-examples
+* Thu Jul 19 2012 Fedora Release Engineering <rel-eng@lists.fedoraproject.org> - 3.4.0-5
+- Rebuilt for https://fedoraproject.org/wiki/Fedora_18_Mass_Rebuild
 
-* Thu Nov 26 2009 Jérôme Brenier <incubusss@mandriva.org> 3.2.4-1mdv2010.1
-+ Revision: 470387
-- new version 3.2.4
-- new subpackage jna-examples
-- resync with Fedora patches
+* Wed Jun 20 2012 Levente Farkas <lfarkas@lfarkas.org> - 3.4.0-4
+- fix #833786 by Mary Ellen Foster 
 
-* Fri Sep 25 2009 Jaroslav Tulach <jtulach@mandriva.org> 3.0.9-1mdv2010.0
-+ Revision: 448704
-- Updating to 3.0.9 version
+* Wed Mar 14 2012 Juan Hernandez <juan.hernandez@redhat.com> - 3.4.0-3
+- Generate correctly the maven dependencies map (#)
 
-* Fri Sep 11 2009 Thierry Vignaud <tv@mandriva.org> 3.0.4-0.1.svn630.3mdv2010.0
-+ Revision: 438039
-- rebuild
+* Sun Mar 11 2012 Ville Skyttä <ville.skytta@iki.fi> - 3.4.0-2
+- Don't strip binaries too early, build with $RPM_LD_FLAGS (#802020).
 
-* Fri Mar 06 2009 Antoine Ginies <aginies@mandriva.com> 3.0.4-0.1.svn630.2mdv2009.1
-+ Revision: 350277
-- 2009.1 rebuild
+* Wed Mar  7 2012 Levente Farkas <lfarkas@lfarkas.org> - 3.4.0-1
+- Update to 3.4.0
 
-* Thu Aug 14 2008 Alexander Kurtakov <akurtakov@mandriva.org> 3.0.4-0.1.svn630.1mdv2009.0
-+ Revision: 271886
-- fix examples install on 64bit
-- new version 3.0.4
+* Fri Jan 13 2012 Fedora Release Engineering <rel-eng@lists.fedoraproject.org> - 3.2.7-13
+- Rebuilt for https://fedoraproject.org/wiki/Fedora_17_Mass_Rebuild
 
-  + Thierry Vignaud <tv@mandriva.org>
-    - rebuild early 2009.0 package (before pixel changes)
+* Wed Feb 09 2011 Fedora Release Engineering <rel-eng@lists.fedoraproject.org> - 3.2.7-12
+- Rebuilt for https://fedoraproject.org/wiki/Fedora_15_Mass_Rebuild
 
-* Wed Apr 30 2008 Alexander Kurtakov <akurtakov@mandriva.org> 3.0.2-0.7.3mdv2009.0
-+ Revision: 199450
-- bump release
-- reintroduce jna-examples, needed by atunes
+* Thu Dec  9 2010 Ville Skyttä <ville.skytta@iki.fi> - 3.2.7-11
+- Drop dependency on main package from -javadoc.
+- Add license to -javadoc, and OTHERS and TODO to main package docs.
+- Install javadocs and jars unversioned.
+- Fix release-notes.html permissions.
+- Make -javadoc and -contrib noarch where available.
 
-* Tue Apr 29 2008 Alexander Kurtakov <akurtakov@mandriva.org> 3.0.2-0.7.2mdv2009.0
-+ Revision: 198927
-- obsolete old examples package
-- new version
+* Fri Dec  3 2010 Levente Farkas <lfarkas@lfarkas.org> - 3.2.7-10
+- fix pom file name #655810
+- disable check everywhere since it seems to always fail in mock
 
-* Wed Mar 19 2008 Nicolas Vigier <nvigier@mandriva.com> 0:3.0-0.0.2mdv2008.1
-+ Revision: 188913
-- build jna-examples.jar because atunes needs it
+* Fri Nov  5 2010 Dan Horák <dan[at]danny.cz> - 3.2.7-9
+- exclude checks on s390(x)
 
-* Wed Feb 27 2008 Alexander Kurtakov <akurtakov@mandriva.org> 0:3.0-0.0.1mdv2008.1
-+ Revision: 175929
-- add libx11-devel BR
-- import jna
+* Tue Oct 12 2010 Levente Farkas <lfarkas@lfarkas.org> - 3.2.7-8
+- exclude check on ppc
 
+* Fri Oct  8 2010 Levente Farkas <lfarkas@lfarkas.org> - 3.2.7-7
+- fix excludearch condition
 
+* Wed Oct  6 2010 Levente Farkas <lfarkas@lfarkas.org> - 3.2.7-6
+- readd excludearch for old release fix #548099
+
+* Fri Oct 01 2010 Dennis Gilmore <dennis@ausil.us> - 3.2.7-5.1
+- remove the ExcludeArch it makes no sense
+
+* Sun Aug  1 2010 Levente Farkas <lfarkas@lfarkas.org> - 3.2.7-5
+- reenable test and clean up contrib files
+
+* Tue Jul 27 2010 Levente Farkas <lfarkas@lfarkas.org> - 3.2.7-4
+- add Obsoletes for jna-examples
+
+* Sat Jul 24 2010 Levente Farkas <lfarkas@lfarkas.org> - 3.2.7-3
+- upstream 64bit fixes
+
+* Fri Jul 23 2010 Levente Farkas <lfarkas@lfarkas.org> - 3.2.7-2
+- Temporary hack for 64bit build
+
+* Thu Jul 22 2010 Levente Farkas <lfarkas@lfarkas.org> - 3.2.7-1
+- Rebase on upstream 3.2.7
+
+* Wed Jul 21 2010 Stanislav Ochotnicky <sochotnicky@redhat.com> - 3.2.4-6
+- Add maven depmap
+
+* Thu Apr 22 2010 Colin Walters <walters@verbum.org> - 3.2.4-5
+- Add patches to make the build happen with gcj
+
+* Wed Apr 21 2010 Colin Walters <walters@verbum.org> - 3.2.4-4
+- Fix the build by removing upstream's hardcoded md5
+
+* Thu Dec 17 2009 Levente Farkas <lfarkas@lfarkas.org> - 3.2.4-3
+- add proper ExclusiveArch
+
+* Thu Dec 17 2009 Alexander Kurtakov <akurtako@redhat.com> 3.2.4-2
+- Comment rhel ExclusiveArchs - not correct applies on Fedora.
+
+* Sat Nov 14 2009 Levente Farkas <lfarkas@lfarkas.org> - 3.2.4-1
+- Rebase on upstream 3.2.4
+
+* Thu Oct 29 2009 Lubomir Rintel <lkundrak@v3.sk> - 3.0.9-6
+- Add examples subpackage
+
+* Fri Jul 24 2009 Fedora Release Engineering <rel-eng@lists.fedoraproject.org> - 3.0.9-5
+- Rebuilt for https://fedoraproject.org/wiki/Fedora_12_Mass_Rebuild
+
+* Wed Feb 25 2009 Fedora Release Engineering <rel-eng@lists.fedoraproject.org> - 3.0.9-4
+- Rebuilt for https://fedoraproject.org/wiki/Fedora_11_Mass_Rebuild
+
+* Tue Dec 30 2008 Colin Walters <walters@redhat.com> - 3.0.9-3
+- Add patch to allow opening current process
+
+* Sun Nov 30 2008 Colin Walters <walters@redhat.com> - 3.0.9-2
+- Fix library mapping, remove upstreamed patches
+
+* Fri Oct 31 2008 Colin Walters <walters@redhat.com> - 3.0.9-1
+- Rebase on upstream 3.0.9
+
+* Tue Oct 14 2008 Colin Walters <walters@redhat.com> - 3.0.4-10.svn729
+- Add patch to support String[] returns
+
+* Wed Oct 01 2008 Colin Walters <walters@redhat.com> - 3.0.4-9.svn729
+- Add new patch to support NativeMapped[] which I want
+
+* Wed Oct 01 2008 Colin Walters <walters@redhat.com> - 3.0.4-8.svn729
+- Update to svn r729
+- drop upstreamed typemapper patch
+
+* Thu Sep 18 2008 Colin Walters <walters@redhat.com> - 3.0.4-7.svn700
+- Add patch to make typemapper always accessible
+- Add patch to skip cracktastic X11 test bits which currently fail
+
+* Tue Sep 09 2008 Colin Walters <walters@redhat.com> - 3.0.4-5.svn700
+- Update to upstream SVN r700; drop all now upstreamed patches
+
+* Sat Sep 06 2008 Colin Walters <walters@redhat.com> - 3.0.4-3.svn630
+- A few more patches for JGIR
+
+* Thu Sep 04 2008 Colin Walters <walters@redhat.com> - 3.0.4-2.svn630
+- Add two (sent upstream) patches that I need for JGIR
+
+* Thu Jul 31 2008 Colin Walters <walters@redhat.com> - 3.0.4-1.svn630
+- New upstream version, drop upstreamed patch parts
+- New patch jna-3.0.4-nomixedjar.patch which ensures that we don't
+  include the .so in the .jar
+
+* Fri Apr 04 2008 Colin Walters <walters@redhat.com> - 3.0.2-7
+- Add patch to use JPackage-compatible JNI library path
+- Do build debuginfo package
+- Refactor build patch greatly so it's hopefully upstreamable
+- Install .so directly to JNI directory, rather than inside jar
+- Clean up Requires/BuildRequires (thanks Mamoru Tasaka)
+
+* Sun Mar 30 2008 Conrad Meyer <konrad@tylerc.org> - 3.0.2-6
+- -javadocs should be -javadoc.
+- %%files section cleaned a bit.
+
+* Mon Mar 17 2008 Conrad Meyer <konrad@tylerc.org> - 3.0.2-5
+- -javadocs package should be in group "Documentation".
+
+* Mon Mar 17 2008 Conrad Meyer <konrad@tylerc.org> - 3.0.2-4
+- License should be LGPLv2+, not GPLv2+.
+- Several minor fixes.
+- Fix Requires in javadoc package.
+
+* Sun Mar 16 2008 Conrad Meyer <konrad@tylerc.org> - 3.0.2-3
+- Don't use internal libffi.
+
+* Thu Mar 6 2008 Conrad Meyer <konrad@tylerc.org> - 3.0.2-2
+- Don't pull in jars from the web.
+
+* Mon Mar 3 2008 Conrad Meyer <konrad@tylerc.org> - 3.0.2-1
+- Initial package.
