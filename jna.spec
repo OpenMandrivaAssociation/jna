@@ -1,4 +1,6 @@
 %{?_javapackages_macros:%_javapackages_macros}
+%define _enable_debug_packages %{nil}
+%define debug_package %{nil}
 Name:           jna
 Version:        3.5.2
 Release:        2.1%{?dist}
