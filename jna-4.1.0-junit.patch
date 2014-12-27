@@ -1,7 +1,7 @@
 diff -up ./build.xml.junit ./build.xml
---- ./build.xml.junit	2013-04-29 15:06:12.423790515 +0200
-+++ ./build.xml	2013-04-29 15:07:09.442166774 +0200
-@@ -250,7 +250,7 @@
+--- ./build.xml.junit	2014-03-07 12:52:05.899899902 +0100
++++ ./build.xml	2014-03-07 12:58:14.956255306 +0100
+@@ -290,7 +290,7 @@
    <target name="-setup" depends="-dynamic-properties">
      <path id="compile-test.path">
        <path id="test.libs">
@@ -10,7 +10,7 @@ diff -up ./build.xml.junit ./build.xml
            <include name="junit.jar"/>
          </fileset>
          <fileset dir="lib/test"/>
-@@ -441,7 +441,7 @@ osname=macosx;processor=x86;processor=x8
+@@ -486,7 +486,7 @@ osname=macosx;processor=x86;processor=x8
      <subant target="jar" failonerror="true">
        <property name="file.reference.jna.build" location="${build}"/>
        <property name="file.reference.jna.jar" location="${build}/${jar}"/>
@@ -18,8 +18,8 @@ diff -up ./build.xml.junit ./build.xml
 +      <property name="libs.junit.classpath" location="/usr/share/java/junit.jar"/>
        <property name="javac.source" value="${platform.compatibility}"/>
        <property name="javac.target" value="${platform.compatibility}"/>
-       <fileset dir="${contrib}" includes="platform/build.xml" />
-@@ -456,7 +456,7 @@ osname=macosx;processor=x86;processor=x8
+       <!-- OSGi manifest properties -->
+@@ -509,7 +509,7 @@ osname=macosx;processor=x86;processor=x8
      <subant target="jar" failonerror="true">
        <property name="file.reference.jna.build" location="${build}"/>
        <property name="file.reference.jna.jar" location="${build}/${jar}"/>
@@ -28,7 +28,7 @@ diff -up ./build.xml.junit ./build.xml
        <fileset dir="${contrib}" includes="*/build.xml" excludes="platform/build.xml"/>
      </subant>
    </target>
-@@ -734,7 +734,7 @@ osname=macosx;processor=x86;processor=x8
+@@ -822,7 +822,7 @@ osname=macosx;processor=x86;processor=x8
      <mkdir dir="${build}/jws"/>
      <copy todir="${build}/jws" file="${build}/${jar}"/>
      <copy todir="${build}/jws" file="${build}/${testjar}"/>
@@ -37,8 +37,8 @@ diff -up ./build.xml.junit ./build.xml
      <copy todir="${build}/jws" file="lib/clover.jar"/>
      <jar jarfile="${build}/jws/jnidispatch.jar">
        <fileset dir="${build.native}" includes="*jnidispatch.*"/>
-@@ -845,7 +845,7 @@ osname=macosx;processor=x86;processor=x8
-     <subant target="test" failonerror="true">
+@@ -933,7 +933,7 @@ osname=macosx;processor=x86;processor=x8
+     <subant target="test" failonerror="true" inheritall="true" inheritrefs="true">
        <property name="file.reference.jna.build" location="${build}"/>
        <property name="file.reference.jna.jar" location="${build}/${jar}"/>
 -      <property name="libs.junit.classpath" location="lib/junit.jar"/>

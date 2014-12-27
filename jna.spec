@@ -1,12 +1,10 @@
 %{?_javapackages_macros:%_javapackages_macros}
-%define _enable_debug_packages %{nil}
-%define debug_package %{nil}
 Name:           jna
-Version:        3.5.2
-Release:        2.1%{?dist}
+Version:        4.1.0
+Release:        7%{?dist}
 Summary:        Pure Java access to native libraries
 
-
+Group:          Development/Java
 License:        LGPLv2+
 URL:            https://jna.dev.java.net/
 # The source for this package was pulled from upstream's vcs. Use the
@@ -15,22 +13,24 @@ URL:            https://jna.dev.java.net/
 #   tar xzf twall-jna-%{version}*.tar.gz
 #   mv twall-jna-* jna-%{version}
 #   rm -rf jna-%{version}/{dist/*,www}
-#   tar cjf ~/rpm/SOURCES/jna-%{version}.tar.bz2 jna-%{version}
-Source0:        %{name}-%{version}.tar.bz2
+#   tar cjf ~/rpm/SOURCES/jna-%{version}.tar.gz jna-%{version}
+Source0:        https://github.com/twall/jna/archive/%{name}-%{version}.tar.gz
 Source1:	package-list
 Patch0:         jna-3.5.0-build.patch
 # This patch is Fedora-specific for now until we get the huge
 # JNI library location mess sorted upstream
-Patch1:         jna-3.5.2-loadlibrary.patch
+Patch1:         jna-4.0.0-loadlibrary.patch
 # The X11 tests currently segfault; overall I think the X11 JNA stuff is just a 
 # Really Bad Idea, for relying on AWT internals, using the X11 API at all,
 # and using a complex API like X11 through JNA just increases the potential
 # for problems.
-Patch2:         jna-3.4.0-tests-headless.patch
+Patch2:         jna-4.0.0-tests-headless.patch
 # Build using GCJ javadoc
 Patch3:         jna-3.5.2-gcj-javadoc.patch
 # junit cames from rpm
-Patch4:         jna-3.5.2-junit.patch
+Patch4:         jna-4.1.0-junit.patch
+Patch6:         jna-4.0.0-ffi.patch
+Patch7:         jna-4.0.0-fix-native-test.patch
 BuildRoot:      %{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
 
 # We manually require libffi because find-requires doesn't work
@@ -40,10 +40,7 @@ Requires(post):	jpackage-utils
 Requires(postun): jpackage-utils
 BuildRequires:  java-devel, jpackage-utils, ffi-devel
 BuildRequires:  ant, ant-junit, junit
-%if 0%{?rhel} && 0%{?rhel} < 7
-BuildRequires:	ant-nodeps, ant-trax
-%endif
-BuildRequires:  libxt-devel
+BuildRequires:  pkgconfig(x11) pkgconfig(xt)
 
 
 %description
@@ -57,7 +54,7 @@ of use take priority.
 
 %package        javadoc
 Summary:        Javadocs for %{name}
-
+Group:          Documentation
 BuildArch:      noarch
 
 
@@ -67,12 +64,10 @@ This package contains the javadocs for %{name}.
 
 %package        contrib
 Summary:        Contrib for %{name}
-
+Group:          Documentation
 Requires:       %{name} = %{version}-%{release}
 Obsoletes:      %{name}-examples
-
 BuildArch:      noarch
-
 
 
 %description    contrib
@@ -83,16 +78,14 @@ This package contains the contributed examples for %{name}.
 %setup -q -n %{name}-%{version}
 cp %{SOURCE1} .
 %patch0 -p1 -b .build
-sed -e 's|@JNIPATH@|%{_libdir}/%{name}|' %{PATCH1} | patch -p1
+%patch1 -p1 -b .loadlib
+sed -i 's|@JNIPATH@|%{_libdir}/%{name}|' src/com/sun/jna/Native.java
 %patch2 -p1 -b .tests-headless
 chmod -Rf a+rX,u+w,g-w,o-w .
 %patch3 -p0 -b .gcj-javadoc
 %patch4 -p1 -b .junit
-
-# UnloadTest fail during build since we modify class loading
-rm test/com/sun/jna/JNAUnloadTest.java
-# current bug: https://jna.dev.java.net/issues/show_bug.cgi?id=155
-#rm test/com/sun/jna/DirectTest.java
+%patch6 -p1 -b .ffi
+%patch7 -p1
 
 # all java binaries must be removed from the sources
 #find . -name '*.jar' -delete
@@ -111,8 +104,8 @@ chmod -c 0644 LICENSE OTHERS CHANGES.md
 %build
 # We pass -Ddynlink.native which comes from our patch because
 # upstream doesn't want to default to dynamic linking.
-ant -Dcflags_extra.native="%{optflags}" -Ddynlink.native=true -Dnomixedjar.native=true compile native javadoc jar contrib-jars
-#ant -Dcflags_extra.native="%{optflags}" -Ddynlink.native=true -Dnomixedjar.native=true clean dist
+#ant -Dcflags_extra.native="%{optflags}" -Ddynlink.native=true native compile javadoc jar contrib-jars
+ant -Dcflags_extra.native="%{optflags}" -Ddynlink.native=true native dist
 # remove compiled contribs
 find contrib -name build -exec rm -rf {} \; || :
 
@@ -120,117 +113,63 @@ find contrib -name build -exec rm -rf {} \; || :
 rm -rf %{buildroot}
 
 # jars
-install -D -m 644 build*/%{name}.jar %{buildroot}%{_javadir}/%{name}.jar
+install -D -m 644 build/%{name}-min.jar %{buildroot}%{_javadir}/%{name}.jar
 install -d -m 755 %{buildroot}%{_javadir}/%{name}
 find contrib -name '*.jar' -exec cp {} %{buildroot}%{_javadir}/%{name}/ \;
 # NOTE: JNA has highly custom code to look for native jars in this
 # directory.  Since this roughly matches the jpackage guidelines,
 # we'll leave it unchanged.
 install -d -m 755 %{buildroot}%{_libdir}/%{name}
-install -m 755 build*/native/libjnidispatch*.so %{buildroot}%{_libdir}/%{name}/
+install -m 755 build/native*/libjnidispatch*.so %{buildroot}%{_libdir}/%{name}/
 
-# OpenMandriva
-%if 0%{?fedora}
-%if 0%{?fedora} >= 9 || 0%{?rhel} > 5
 # install maven pom file
 install -Dm 644 pom-%{name}.xml %{buildroot}%{_mavenpomdir}/JPP-%{name}.pom
-install -Dm 644 pom-platform.xml %{buildroot}%{_mavenpomdir}/JPP.%{name}-platform.pom
-
-# ... and maven depmap
-%if 0%{?fedora} >= 9
-%add_maven_depmap JPP-%{name}.pom %{name}.jar
-%add_maven_depmap JPP.%{name}-platform.pom -f platform %{name}/platform.jar
-%else
-%add_to_maven_depmap net.java.dev.jna jna-platform %{version} JPP jna-platform
-mv %{buildroot}%{_mavendepmapfragdir}/%{name} %{buildroot}%{_mavendepmapfragdir}/%{name}-platform
-%add_to_maven_depmap net.java.dev.jna %{name} %{version} JPP %{name}
-%endif
-%endif
-# OpenMandriva
-%else
-# install maven pom file
-install -Dm 644 pom-%{name}.xml %{buildroot}%{_mavenpomdir}/JPP-%{name}.pom
-install -Dm 644 pom-platform.xml %{buildroot}%{_mavenpomdir}/JPP.%{name}-platform.pom
+install -Dm 644 pom-%{name}-platform.xml %{buildroot}%{_mavenpomdir}/JPP.%{name}-%{name}-platform.pom
 
 # ... and maven depmap
 %add_maven_depmap JPP-%{name}.pom %{name}.jar
-%add_maven_depmap JPP.%{name}-platform.pom -f platform %{name}/platform.jar
-# OpenMandriva
-%endif
+%add_maven_depmap JPP.%{name}-%{name}-platform.pom -f platform %{name}/%{name}-platform.jar -a "net.java.dev.jna:platform"
 
 # javadocs
 install -p -d -m 755 %{buildroot}%{_javadocdir}/%{name}
 cp -a doc/javadoc/* %{buildroot}%{_javadocdir}/%{name}
 
 
-#%if 0%{?rhel} >= 6 || 0%{?fedora} >= 9
-#%if 0%{?fedora} >= 9
-#%ifnarch ppc s390 s390x
-#%check
-#ant -Dcflags_extra.native="%{optflags}" -Ddynlink.native=true -Dnomixedjar.native=true test
-#%endif
-#%endif
-%if 0%{?fedora}
-%else
-sed -i "s|3.5.2-SNAPSHOT|3.5.2.SNAPSHOT|" %{buildroot}%{_mavendepmapfragdir}/*
-%endif
-
-%clean
-rm -rf %{buildroot}
-
-
-%if 0%{?rhel} > 5
-%post
-%update_maven_depmap
-
-%postun
-%update_maven_depmap
-
-%post contrib
-%update_maven_depmap
-
-%postun contrib
-%update_maven_depmap
-%endif
-
-
-%files
-%defattr(-,root,root,-)
-%doc LICENSE OTHERS README.md CHANGES.md TODO
+%files -f .mfiles
 %{_libdir}/%{name}
-%{_javadir}/%{name}.jar
-%if 0%{?fedora}
-%if 0%{?fedora} >= 9 || 0%{?rhel} > 5
-%{_mavenpomdir}/JPP-%{name}.pom
-%{_mavendepmapfragdir}/%{name}
-%endif
-%else
-%{_mavenpomdir}/JPP-%{name}.pom
-%{_mavendepmapfragdir}/%{name}
-%endif
-
+%doc LICENSE OTHERS README.md CHANGES.md TODO
 
 %files javadoc
-%defattr(-,root,root,-)
 %doc LICENSE
 %{_javadocdir}/%{name}
 
 
-%files contrib
-%defattr(-,root,root,-)
+%files contrib -f .mfiles-platform
 %{_javadir}/%{name}
-%if 0%{?fedora}
-%if 0%{?fedora} >= 9 || 0%{?rhel} > 5
-%{_mavenpomdir}/JPP.%{name}-platform.pom
-%{_mavendepmapfragdir}/%{name}-platform
-%endif
-%else
-%{_mavenpomdir}/JPP.%{name}-platform.pom
-%{_mavendepmapfragdir}/%{name}-platform
-%endif
-
 
 %changelog
+* Wed Oct 01 2014 Michal Srb <msrb@redhat.com> - 4.1.0-7
+- Fix for 32-bit systems (Resolves: rhbz#1148349)
+- Fix FTBFS (Resolves: rhbz#1106955)
+
+* Sat Aug 16 2014 Fedora Release Engineering <rel-eng@lists.fedoraproject.org> - 4.1.0-6
+- Rebuilt for https://fedoraproject.org/wiki/Fedora_21_22_Mass_Rebuild
+
+* Sun Jun 08 2014 Fedora Release Engineering <rel-eng@lists.fedoraproject.org> - 4.1.0-5
+- Rebuilt for https://fedoraproject.org/wiki/Fedora_21_Mass_Rebuild
+
+* Fri Jan 10 2014 Roland Grunberg <rgrunber@redhat.com> - 4.0.0-4
+- fix updated depmap
+
+* Fri Jan 10 2014 Roland Grunberg <rgrunber@redhat.com> - 4.0.0-3
+- Update depmap calls and fix tests compilation issue.
+
+* Sat Aug 03 2013 Fedora Release Engineering <rel-eng@lists.fedoraproject.org> - 4.0.0-2
+- Rebuilt for https://fedoraproject.org/wiki/Fedora_20_Mass_Rebuild
+
+* Sat Jul  6 2013 Levente Farkas <lfarkas@lfarkas.org> - 4.0-1
+- Update to 4.0
+
 * Fri Jun 28 2013 Mikolaj Izdebski <mizdebsk@redhat.com> - 3.5.2-2
 - Fix ant-trax and ant-nodeps BR on RHEL
 
