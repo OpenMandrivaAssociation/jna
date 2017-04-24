@@ -1,7 +1,9 @@
 %{?_javapackages_macros:%_javapackages_macros}
+%define debug_package %nil
+
 Name:           jna
 Version:        4.1.0
-Release:        7%{?dist}
+Release:        7.1
 Summary:        Pure Java access to native libraries
 
 Group:          Development/Java
@@ -31,7 +33,8 @@ Patch3:         jna-3.5.2-gcj-javadoc.patch
 Patch4:         jna-4.1.0-junit.patch
 Patch6:         jna-4.0.0-ffi.patch
 Patch7:         jna-4.0.0-fix-native-test.patch
-BuildRoot:      %{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
+# remove the bundled native code declaration which is not true
+Patch8:		jna-4.1.0-manifest_native.patch
 
 # We manually require libffi because find-requires doesn't work
 # inside jars.
@@ -86,6 +89,7 @@ chmod -Rf a+rX,u+w,g-w,o-w .
 %patch4 -p1 -b .junit
 %patch6 -p1 -b .ffi
 %patch7 -p1
+%patch8 -p1
 
 # all java binaries must be removed from the sources
 #find . -name '*.jar' -delete
