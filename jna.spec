@@ -3,7 +3,7 @@
 
 Name:           jna
 Version:        4.1.0
-Release:        7.2
+Release:        7.3
 Summary:        Pure Java access to native libraries
 
 Group:          Development/Java
