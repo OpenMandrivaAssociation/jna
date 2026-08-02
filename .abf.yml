@@ -1,4 +1,3 @@
-removed_sources:
-  jna-3.5.2.tar.bz2: 20f84d11f32c5110a8fb3d5cf1df7efcc7a86bec
 sources:
-  jna-4.1.0.tar.gz: c25d8c28acd78594a86d453ddd65191f09d3bb87
+  jna-3.5.2.tar.bz2: 20f84d11f32c5110a8fb3d5cf1df7efcc7a86bec
+  jna-5.18.1.tar.gz: 5433457f278090fb899f17a6a3da3cf13725a102

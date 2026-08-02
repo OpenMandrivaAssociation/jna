@@ -1,11 +1,10 @@
-diff -up ./build.xml.tests-headless ./build.xml
---- ./build.xml.tests-headless	2013-07-04 20:42:30.000000000 +0200
-+++ ./build.xml	2013-07-05 15:06:19.354441386 +0200
-@@ -885,6 +885,7 @@ osname=macosx;processor=x86;processor=x8
-       <sysproperty key="jna.builddir" file="${build}"/>
-       <sysproperty key="jna.nativedir" file="${build.native}"/>
-       <jvmarg value="${vmopt.arch}"/>
+--- a/build.xml	2025-09-30 20:40:43.000000000 +0200
++++ b/build.xml	2026-08-02 20:09:29.895344327 +0200
+@@ -1240,6 +1240,7 @@
+       <!-- enable JNI on JDK 24+ -->
+       <jvmarg value="--enable-native-access=ALL-UNNAMED" />
+       <jvmarg if:set="test.jdwp" value="${test.jdwp}" />
 +      <jvmarg value="-Djava.awt.headless=true"/>
-       <classpath><path refid="test.runpath"/></classpath>
-       <formatter type="brief" usefile="false"/>
-       <formatter type="xml"/>
+       <!-- optionally run headless -->
+       <syspropertyset refid="headless"/>
+       <!-- avoid VM conflicts with JNA protected mode -->

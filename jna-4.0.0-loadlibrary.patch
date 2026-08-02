@@ -1,8 +1,6 @@
-diff --git a/src/com/sun/jna/Native.java b/src/com/sun/jna/Native.java
-index 6bdf0db..763d2ef 100644
---- a/src/com/sun/jna/Native.java
-+++ b/src/com/sun/jna/Native.java
-@@ -642,8 +642,8 @@ public final class Native implements Version {
+--- a/src/com/sun/jna/Native.java	2025-09-30 20:40:43.000000000 +0200
++++ b/src/com/sun/jna/Native.java	2026-08-02 20:10:01.045029048 +0200
+@@ -933,8 +933,8 @@
  
      /**
       * Loads the JNA stub library.
@@ -12,8 +10,8 @@ index 6bdf0db..763d2ef 100644
 +     * unnecessary when JNA is properly installed with the OS.
       */
      private static void loadNativeDispatchLibrary() {
- 
-@@ -656,88 +656,19 @@ public final class Native implements Version {
+         if (!Boolean.getBoolean("jna.nounpack")) {
+@@ -946,73 +946,19 @@
              }
          }
  
@@ -26,20 +24,14 @@ index 6bdf0db..763d2ef 100644
 -                String dir = dirs.nextToken();
 -                File file = new File(new File(dir), System.mapLibraryName(libName).replace(".dylib", ".jnilib"));
 -                String path = file.getAbsolutePath();
--		if (DEBUG_JNA_LOAD) {
--		    System.out.println("Looking in " + path);
--		}
+-                LOG.log(DEBUG_JNA_LOAD_LEVEL, "Looking in {0}", path);
 -                if (file.exists()) {
 -                    try {
--			if (DEBUG_JNA_LOAD) {
--			    System.out.println("Trying " + path);
--			}
+-                        LOG.log(DEBUG_JNA_LOAD_LEVEL, "Trying {0}", path);
 -                        System.setProperty("jnidispatch.path", path);
 -                        System.load(path);
 -                        jnidispatchPath = path;
--			if (DEBUG_JNA_LOAD) {
--			    System.out.println("Found jnidispatch at " + path);
--			}
+-                        LOG.log(DEBUG_JNA_LOAD_LEVEL, "Found jnidispatch at {0}", path);
 -                        return;
 -                    } catch (UnsatisfiedLinkError ex) {
 -                        // Not a problem if already loaded in anoteher class loader
@@ -57,39 +49,30 @@ index 6bdf0db..763d2ef 100644
 -                        ext = "dylib";
 -                    }
 -                    path = path.substring(0, path.lastIndexOf(orig)) + ext;
--		    if (DEBUG_JNA_LOAD) {
--			System.out.println("Looking in " + path);
--		    }
+-                    LOG.log(DEBUG_JNA_LOAD_LEVEL, "Looking in {0}", path);
 -                    if (new File(path).exists()) {
 -                        try {
--			    if (DEBUG_JNA_LOAD) {
--				System.out.println("Trying " + path);
--			    }
+-                            LOG.log(DEBUG_JNA_LOAD_LEVEL, "Trying {0}", path);
 -                            System.setProperty("jnidispatch.path", path);
 -                            System.load(path);
 -                            jnidispatchPath = path;
--                            if (DEBUG_JNA_LOAD) {
--                                System.out.println("Found jnidispatch at " + path);
--                            }
+-                            LOG.log(DEBUG_JNA_LOAD_LEVEL, "Found jnidispatch at {0}", path);
 -                            return;
 -                        } catch (UnsatisfiedLinkError ex) {
--                            System.err.println("File found at " + path + " but not loadable: " + ex.getMessage());
+-                            LOG.log(Level.WARNING, "File found at " + path + " but not loadable: " + ex.getMessage(), ex);
 -                        }
 -                    }
 -                }
 -            }
 -        }
--        if (!Boolean.getBoolean("jna.nosys")) {
-+        String[] libdirs = {"/usr/lib64/jna/", "/usr/lib/jna/"};
+-        String jnaNosys = System.getProperty("jna.nosys", "true");
+-        if ((!Boolean.parseBoolean(jnaNosys)) || Platform.isAndroid()) {
++        String[] libdirs = {"@JNIPATH@/", "/usr/lib/jna/"};
 +        for (String libdir: libdirs) {
              try {
--		if (DEBUG_JNA_LOAD) {
--		    System.out.println("Trying (via loadLibrary) " + libName);
--		}
+-                LOG.log(DEBUG_JNA_LOAD_LEVEL, "Trying (via loadLibrary) {0}", libName);
 -                System.loadLibrary(libName);
--                if (DEBUG_JNA_LOAD) {
--                    System.out.println("Found jnidispatch on system path");
--                }
+-                LOG.log(DEBUG_JNA_LOAD_LEVEL, "Found jnidispatch on system path");
 -                return;
 +                System.load(libdir + System.mapLibraryName("jnidispatch"));
 +                jnidispatchPath = libdir + System.mapLibraryName("jnidispatch");

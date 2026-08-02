@@ -1,0 +1,33 @@
+--- a/build.xml
++++ b/build.xml
+@@ -213,8 +213,10 @@
+   <target name="-setup" depends="-dynamic-properties">
+     <path id="compile-test.path">
+       <path id="test.libs">
+-        <fileset dir="lib">
++        <fileset dir="/usr/share/java">
+           <include name="junit.jar"/>
++        </fileset>
++        <fileset dir="lib">
+           <include name="hamcrest-core-1.3.jar"/>
+         </fileset>
+         <fileset dir="lib/test"/>
+@@ -1146,7 +1148,7 @@
+     <mkdir dir="${build}/jws"/>
+     <copy todir="${build}/jws" file="${build}/${jar}"/>
+     <copy todir="${build}/jws" file="${build}/${testjar}"/>
+-    <copy todir="${build}/jws" file="lib/junit.jar"/>
++    <copy todir="${build}/jws" file="/usr/share/java/junit.jar"/>
+     <copy todir="${build}/jws" file="lib/clover.jar"/>
+     <jar jarfile="${build}/jws/jnidispatch.jar" createUnicodeExtraFields="never" encoding="UTF-8">
+       <fileset dir="${build.native}" includes="*jnidispatch.*"/>
+@@ -1397,7 +1399,8 @@
+     <!-- Full sources required to build and test everything -->
+     <zip zipfile="${dist}/src-full.zip">
+       <zipfileset src="${dist}/src.zip"/>
+-      <zipfileset dir="lib" includes="junit.jar,clover.jar" prefix="lib"/>
++      <zipfileset dir="/usr/share/java" includes="junit.jar" prefix="lib"/>
++      <zipfileset dir="lib" includes="clover.jar" prefix="lib"/>
+       <zipfileset dir="." includes=".classpath,.project"/>
+       <zipfileset dir="${native}" includes="libffi,libffi/**/*" prefix="native"/>
+     </zip>

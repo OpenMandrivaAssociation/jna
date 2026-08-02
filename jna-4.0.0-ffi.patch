@@ -1,12 +1,11 @@
-diff -up ./native/callback.c.ffi ./native/callback.c
---- ./native/callback.c.ffi	2013-07-15 14:41:13.643452439 +0200
-+++ ./native/callback.c	2013-07-15 14:47:23.254830318 +0200
-@@ -253,7 +253,7 @@ create_callback(JNIEnv* env, jobject obj
+--- a/native/callback.c	2025-09-30 20:40:43.000000000 +0200
++++ b/native/callback.c	2026-08-02 20:08:53.955811377 +0200
+@@ -297,7 +297,7 @@
      case 'D': cb->fptr_offset = OFFSETOF(env, CallDoubleMethod); break;
      default: cb->fptr_offset = OFFSETOF(env, CallObjectMethod); break;
      }
--    status = ffi_prep_cif_var(&cb->java_cif, java_abi, 2, argc+3, java_ffi_rtype, cb->java_arg_types);
-+    status = ffi_prep_cif(&cb->java_cif, java_abi, argc+3, java_ffi_rtype, cb->java_arg_types);
+-    status = ffi_prep_cif_var(&cb->java_cif, java_abi, 3, argc+3, java_return_type, cb->java_arg_types);
++    status = ffi_prep_cif(&cb->java_cif, java_abi, argc+3, java_return_type, cb->java_arg_types);
      if (!ffi_error(env, "callback setup (2)", status)) {
-       ffi_prep_closure_loc(cb->closure, &cb->cif, callback_dispatch, cb,
+       ffi_prep_closure_loc(cb->closure, &cb->cif, dispatch_callback, cb,
                             cb->x_closure);

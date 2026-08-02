@@ -2,8 +2,8 @@
 %define debug_package %nil
 
 Name:           jna
-Version:        4.1.0
-Release:        7.3
+Version:        5.18.1
+Release:        1
 Summary:        Pure Java access to native libraries
 
 Group:          Development/Java
@@ -30,11 +30,11 @@ Patch2:         jna-4.0.0-tests-headless.patch
 # Build using GCJ javadoc
 Patch3:         jna-3.5.2-gcj-javadoc.patch
 # junit cames from rpm
-Patch4:         jna-4.1.0-junit.patch
+Patch4:         jna-5.18.1-junit.patch
 Patch6:         jna-4.0.0-ffi.patch
 Patch7:         jna-4.0.0-fix-native-test.patch
 # remove the bundled native code declaration which is not true
-Patch8:		jna-4.1.0-manifest_native.patch
+Patch8:		jna-5.18.1-manifest_native.patch
 
 # We manually require libffi because find-requires doesn't work
 # inside jars.
@@ -80,16 +80,16 @@ This package contains the contributed examples for %{name}.
 %prep
 %setup -q -n %{name}-%{version}
 cp %{SOURCE1} .
-%patch0 -p1 -b .build
-%patch1 -p1 -b .loadlib
+%patch -P 0 -p1 -b .build
+%patch -P 1 -p1 -b .loadlib
 sed -i 's|@JNIPATH@|%{_libdir}/%{name}|' src/com/sun/jna/Native.java
-%patch2 -p1 -b .tests-headless
+%patch -P 2 -p1 -b .tests-headless
 chmod -Rf a+rX,u+w,g-w,o-w .
-%patch3 -p0 -b .gcj-javadoc
-%patch4 -p1 -b .junit
-%patch6 -p1 -b .ffi
-%patch7 -p1
-%patch8 -p1
+%patch -P 3 -p1 -b .gcj-javadoc
+%patch -P 4 -p1 -b .junit
+%patch -P 6 -p1 -b .ffi
+%patch -P 7 -p1
+%patch -P 8 -p1
 
 # all java binaries must be removed from the sources
 #find . -name '*.jar' -delete
