@@ -15,6 +15,8 @@ BuildRequires:	java-current-devel
 BuildRequires:	sysjar
 BuildRequires:	make
 BuildRequires:	pkgconfig(libffi)
+# jawt_md.h includes X11/Xlib.h and X11/Xutil.h. libjawt is loaded at runtime.
+BuildRequires:	pkgconfig(x11)
 BuildRequires:	clang
 
 %description
