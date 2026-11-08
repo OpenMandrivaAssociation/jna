@@ -1,338 +1,126 @@
-%{?_javapackages_macros:%_javapackages_macros}
-%define debug_package %nil
-
-Name:           jna
-Version:        5.18.1
-Release:        1
-Summary:        Pure Java access to native libraries
-
-Group:          Development/Java
-License:        LGPLv2+
-URL:            https://jna.dev.java.net/
-# The source for this package was pulled from upstream's vcs. Use the
-# following commands to generate the tarball:
-#   https://github.com/twall/jna/tarball/%{version}
-#   tar xzf twall-jna-%{version}*.tar.gz
-#   mv twall-jna-* jna-%{version}
-#   rm -rf jna-%{version}/{dist/*,www}
-#   tar cjf ~/rpm/SOURCES/jna-%{version}.tar.gz jna-%{version}
-Source0:        https://github.com/twall/jna/archive/%{name}-%{version}.tar.gz
-Source1:	package-list
-Patch0:         jna-3.5.0-build.patch
-# This patch is Fedora-specific for now until we get the huge
-# JNI library location mess sorted upstream
-Patch1:         jna-4.0.0-loadlibrary.patch
-# The X11 tests currently segfault; overall I think the X11 JNA stuff is just a 
-# Really Bad Idea, for relying on AWT internals, using the X11 API at all,
-# and using a complex API like X11 through JNA just increases the potential
-# for problems.
-Patch2:         jna-4.0.0-tests-headless.patch
-# Build using GCJ javadoc
-Patch3:         jna-3.5.2-gcj-javadoc.patch
-# junit cames from rpm
-Patch4:         jna-5.18.1-junit.patch
-Patch6:         jna-4.0.0-ffi.patch
-Patch7:         jna-4.0.0-fix-native-test.patch
-# remove the bundled native code declaration which is not true
-Patch8:		jna-5.18.1-manifest_native.patch
-
-# We manually require libffi because find-requires doesn't work
-# inside jars.
-Requires:       java, jpackage-utils
-Requires(post):	jpackage-utils
-Requires(postun): jpackage-utils
-BuildRequires:  java-devel, jpackage-utils, ffi-devel
-BuildRequires:  ant, ant-junit, junit
-BuildRequires:  pkgconfig(x11) pkgconfig(xt)
-
+Name:		jna
+Version:	5.19.1
+Release:	1
+# The native makefile strips libjnidispatch.so and does not emit DWARF.
+%global debug_package %{nil}
+Summary:	Java Native Access
+Group:		Development/Java
+License:	(LGPL-2.1-or-later OR Apache-2.0)
+URL:		https://github.com/java-native-access/jna
+Source0:	https://codeload.github.com/java-native-access/jna/tar.gz/refs/tags/%{version}#/jna-%{version}.tar.gz
+# The previous build shipped javadoc and a contrib jar.
+Obsoletes:	jna-javadoc < %{version}-%{release}
+Obsoletes:	jna-contrib < %{version}-%{release}
+BuildRequires:	java-current-devel
+BuildRequires:	sysjar
+BuildRequires:	make
+BuildRequires:	pkgconfig(libffi)
+BuildRequires:	clang
 
 %description
-JNA provides Java programs easy access to native shared libraries
-(DLLs on Windows) without writing anything but Java code. JNA's
-design aims to provide native access in a natural way with a
-minimum of effort. No boilerplate or generated code is required.
-While some attention is paid to performance, correctness and ease
-of use take priority.
-
-
-%package        javadoc
-Summary:        Javadocs for %{name}
-Group:          Documentation
-BuildArch:      noarch
-
-
-%description    javadoc
-This package contains the javadocs for %{name}.
-
-
-%package        contrib
-Summary:        Contrib for %{name}
-Group:          Documentation
-Requires:       %{name} = %{version}-%{release}
-Obsoletes:      %{name}-examples
-BuildArch:      noarch
-
-
-%description    contrib
-This package contains the contributed examples for %{name}.
-
+Java Native Access calls native functions from Java without handwritten
+JNI glue. libjnidispatch.so is built against the system libffi and
+loaded from the system library path.
 
 %prep
-%setup -q -n %{name}-%{version}
-cp %{SOURCE1} .
-%patch -P 0 -p1 -b .build
-%patch -P 1 -p1 -b .loadlib
-sed -i 's|@JNIPATH@|%{_libdir}/%{name}|' src/com/sun/jna/Native.java
-%patch -P 2 -p1 -b .tests-headless
-chmod -Rf a+rX,u+w,g-w,o-w .
-%patch -P 3 -p1 -b .gcj-javadoc
-%patch -P 4 -p1 -b .junit
-%patch -P 6 -p1 -b .ffi
-%patch -P 7 -p1
-%patch -P 8 -p1
-
-# all java binaries must be removed from the sources
-#find . -name '*.jar' -delete
-rm lib/junit.jar
-find . -name '*.class' -delete
-
-# remove internal copy of libffi
-rm -rf native/libffi
-
-# clean LICENSE.txt
-sed -i 's/\r//' LICENSE
-
-chmod -c 0644 LICENSE OTHERS CHANGES.md
-
+%setup -q
+# The tag archive contains prebuilt jars and a private libffi tree.
+rm -rf dist lib contrib www test native/libffi
+sed -i \
+	-e 's/String VERSION = "TEMPLATE";/String VERSION = "%{version}";/' \
+	-e 's/String VERSION_NATIVE = "TEMPLATE";/String VERSION_NATIVE = "7.0.4";/' \
+	src/com/sun/jna/Version.java
+# Upstream defaults to unpacking a library from the jar. Use the system one.
+sed -i 's/getProperty("jna.nosys", "true")/getProperty("jna.nosys", "false")/' \
+	src/com/sun/jna/Native.java
+# The makefile would record the relative build path as the SONAME.
+sed -i 's/-Wl,-soname,$@/-Wl,-soname,libjnidispatch.so/g' native/Makefile
+grep -F 'String VERSION = "%{version}";' src/com/sun/jna/Version.java
+grep -F 'String VERSION_NATIVE = "7.0.4";' src/com/sun/jna/Version.java
+grep -F 'getProperty("jna.nosys", "false")' src/com/sun/jna/Native.java
+if grep -F -- '-Wl,-soname,$@' native/Makefile; then
+	echo "soname still uses the target path" >&2
+	exit 1
+fi
+grep -F -- '-Wl,-soname,libjnidispatch.so' native/Makefile
+if [ -e native/libffi ] || [ -e dist ]; then
+	echo "prebuilt or bundled sources are still present" >&2
+	exit 1
+fi
 
 %build
-# We pass -Ddynlink.native which comes from our patch because
-# upstream doesn't want to default to dynamic linking.
-#ant -Dcflags_extra.native="%{optflags}" -Ddynlink.native=true native compile javadoc jar contrib-jars
-ant -Dcflags_extra.native="%{optflags}" -Ddynlink.native=true native dist
-# remove compiled contribs
-find contrib -name build -exec rm -rf {} \; || :
+export JAVA_HOME="${JAVA_HOME:-/usr/lib/jvm/java}"
+mkdir -p build/classes build/native
+find src -name '*.java' > sources.list
+"$JAVA_HOME/bin/javac" --release 8 -encoding UTF-8 \
+	-h build/native -d build/classes @sources.list
+# Headers from javac -h have to stay in build/native. make clean deletes them.
+make -C native \
+	DYNAMIC_LIBFFI=true \
+	CC=cc \
+	JNA_JNI_VERSION=7.0.4 \
+	CHECKSUM=5fb98531302accd485c534c452dd952a \
+	../build/native/libjnidispatch.so
+cat > build/manifest.mf << EOF
+Manifest-Version: 1.0
+Main-Class: com.sun.jna.Native
+Implementation-Title: com.sun.jna
+Implementation-Vendor: JNA Development Team
+Implementation-Version: %{version}
+Specification-Title: Java Native Access (JNA)
+Specification-Vendor: JNA Development Team
+Specification-Version: %{version}
+Automatic-Module-Name: com.sun.jna
+
+EOF
+"$JAVA_HOME/bin/jar" --create --manifest build/manifest.mf \
+	--file build/jna.jar -C build/classes .
+cat > build/jna.pom << EOF
+<?xml version="1.0" encoding="UTF-8"?>
+<project>
+  <modelVersion>4.0.0</modelVersion>
+  <groupId>net.java.dev.jna</groupId>
+  <artifactId>jna</artifactId>
+  <version>%{version}</version>
+  <name>Java Native Access</name>
+  <description>Java Native Access built against the system libffi.</description>
+  <url>https://github.com/java-native-access/jna</url>
+  <licenses>
+    <license><name>LGPL-2.1-or-later</name></license>
+    <license><name>Apache-2.0</name></license>
+  </licenses>
+</project>
+EOF
 
 %install
-rm -rf %{buildroot}
+install -D -m 755 build/native/libjnidispatch.so %{buildroot}%{_libdir}/libjnidispatch.so
+sysjar install --buildroot %{buildroot} \
+	--artifact build/jna.pom:build/jna.jar \
+	--file-name jna \
+	--filelist .mfiles
 
-# jars
-install -D -m 644 build/%{name}-min.jar %{buildroot}%{_javadir}/%{name}.jar
-install -d -m 755 %{buildroot}%{_javadir}/%{name}
-find contrib -name '*.jar' -exec cp {} %{buildroot}%{_javadir}/%{name}/ \;
-# NOTE: JNA has highly custom code to look for native jars in this
-# directory.  Since this roughly matches the jpackage guidelines,
-# we'll leave it unchanged.
-install -d -m 755 %{buildroot}%{_libdir}/%{name}
-install -m 755 build/native*/libjnidispatch*.so %{buildroot}%{_libdir}/%{name}/
-
-# install maven pom file
-install -Dm 644 pom-%{name}.xml %{buildroot}%{_mavenpomdir}/JPP-%{name}.pom
-install -Dm 644 pom-%{name}-platform.xml %{buildroot}%{_mavenpomdir}/JPP.%{name}-%{name}-platform.pom
-
-# ... and maven depmap
-%add_maven_depmap JPP-%{name}.pom %{name}.jar
-%add_maven_depmap JPP.%{name}-%{name}-platform.pom -f platform %{name}/%{name}-platform.jar -a "net.java.dev.jna:platform"
-
-# javadocs
-install -p -d -m 755 %{buildroot}%{_javadocdir}/%{name}
-cp -a doc/javadoc/* %{buildroot}%{_javadocdir}/%{name}
-
+%check
+export JAVA_HOME="${JAVA_HOME:-/usr/lib/jvm/java}"
+"$JAVA_HOME/bin/jar" tf build/jna.jar > build/jar-list.txt
+grep -qx 'com/sun/jna/Native.class' build/jar-list.txt
+if grep -E '\.(so|dll|jnilib)$' build/jar-list.txt; then
+	echo "jar contains a native library" >&2
+	exit 1
+fi
+objdump -p %{buildroot}%{_libdir}/libjnidispatch.so > build/objdump.txt
+grep -F 'SONAME' build/objdump.txt | grep -F 'libjnidispatch.so'
+grep 'NEEDED' build/objdump.txt | grep 'libffi.so'
+# No jna.nosys property: success means the default really is the system library.
+"$JAVA_HOME/bin/java" --enable-native-access=ALL-UNNAMED \
+	-cp build/jna.jar \
+	-Djava.library.path=%{buildroot}%{_libdir} \
+	com.sun.jna.Native > build/native-main.txt
+cat build/native-main.txt
+grep -F 'Native: 7.0.4 (5fb98531302accd485c534c452dd952a)' build/native-main.txt
+grep -F 'Prefix: linux-' build/native-main.txt
+grep -x 'Version: %{version}' build/native-main.txt
 
 %files -f .mfiles
-%{_libdir}/%{name}
-%doc LICENSE OTHERS README.md CHANGES.md TODO
-
-%files javadoc
-%doc LICENSE
-%{_javadocdir}/%{name}
-
-
-%files contrib -f .mfiles-platform
-%{_javadir}/%{name}
-
-%changelog
-* Wed Oct 01 2014 Michal Srb <msrb@redhat.com> - 4.1.0-7
-- Fix for 32-bit systems (Resolves: rhbz#1148349)
-- Fix FTBFS (Resolves: rhbz#1106955)
-
-* Sat Aug 16 2014 Fedora Release Engineering <rel-eng@lists.fedoraproject.org> - 4.1.0-6
-- Rebuilt for https://fedoraproject.org/wiki/Fedora_21_22_Mass_Rebuild
-
-* Sun Jun 08 2014 Fedora Release Engineering <rel-eng@lists.fedoraproject.org> - 4.1.0-5
-- Rebuilt for https://fedoraproject.org/wiki/Fedora_21_Mass_Rebuild
-
-* Fri Jan 10 2014 Roland Grunberg <rgrunber@redhat.com> - 4.0.0-4
-- fix updated depmap
-
-* Fri Jan 10 2014 Roland Grunberg <rgrunber@redhat.com> - 4.0.0-3
-- Update depmap calls and fix tests compilation issue.
-
-* Sat Aug 03 2013 Fedora Release Engineering <rel-eng@lists.fedoraproject.org> - 4.0.0-2
-- Rebuilt for https://fedoraproject.org/wiki/Fedora_20_Mass_Rebuild
-
-* Sat Jul  6 2013 Levente Farkas <lfarkas@lfarkas.org> - 4.0-1
-- Update to 4.0
-
-* Fri Jun 28 2013 Mikolaj Izdebski <mizdebsk@redhat.com> - 3.5.2-2
-- Fix ant-trax and ant-nodeps BR on RHEL
-
-* Thu Apr 25 2013 Levente Farkas <lfarkas@lfarkas.org> - 3.5.2-1
-- Update to 3.5.2
-
-* Thu Feb 14 2013 Fedora Release Engineering <rel-eng@lists.fedoraproject.org> - 3.5.0-2
-- Rebuilt for https://fedoraproject.org/wiki/Fedora_19_Mass_Rebuild
-
-* Thu Jul 19 2012 Fedora Release Engineering <rel-eng@lists.fedoraproject.org> - 3.4.0-5
-- Rebuilt for https://fedoraproject.org/wiki/Fedora_18_Mass_Rebuild
-
-* Wed Jun 20 2012 Levente Farkas <lfarkas@lfarkas.org> - 3.4.0-4
-- fix #833786 by Mary Ellen Foster 
-
-* Wed Mar 14 2012 Juan Hernandez <juan.hernandez@redhat.com> - 3.4.0-3
-- Generate correctly the maven dependencies map (#)
-
-* Sun Mar 11 2012 Ville Skyttä <ville.skytta@iki.fi> - 3.4.0-2
-- Don't strip binaries too early, build with $RPM_LD_FLAGS (#802020).
-
-* Wed Mar  7 2012 Levente Farkas <lfarkas@lfarkas.org> - 3.4.0-1
-- Update to 3.4.0
-
-* Fri Jan 13 2012 Fedora Release Engineering <rel-eng@lists.fedoraproject.org> - 3.2.7-13
-- Rebuilt for https://fedoraproject.org/wiki/Fedora_17_Mass_Rebuild
-
-* Wed Feb 09 2011 Fedora Release Engineering <rel-eng@lists.fedoraproject.org> - 3.2.7-12
-- Rebuilt for https://fedoraproject.org/wiki/Fedora_15_Mass_Rebuild
-
-* Thu Dec  9 2010 Ville Skyttä <ville.skytta@iki.fi> - 3.2.7-11
-- Drop dependency on main package from -javadoc.
-- Add license to -javadoc, and OTHERS and TODO to main package docs.
-- Install javadocs and jars unversioned.
-- Fix release-notes.html permissions.
-- Make -javadoc and -contrib noarch where available.
-
-* Fri Dec  3 2010 Levente Farkas <lfarkas@lfarkas.org> - 3.2.7-10
-- fix pom file name #655810
-- disable check everywhere since it seems to always fail in mock
-
-* Fri Nov  5 2010 Dan Horák <dan[at]danny.cz> - 3.2.7-9
-- exclude checks on s390(x)
-
-* Tue Oct 12 2010 Levente Farkas <lfarkas@lfarkas.org> - 3.2.7-8
-- exclude check on ppc
-
-* Fri Oct  8 2010 Levente Farkas <lfarkas@lfarkas.org> - 3.2.7-7
-- fix excludearch condition
-
-* Wed Oct  6 2010 Levente Farkas <lfarkas@lfarkas.org> - 3.2.7-6
-- readd excludearch for old release fix #548099
-
-* Fri Oct 01 2010 Dennis Gilmore <dennis@ausil.us> - 3.2.7-5.1
-- remove the ExcludeArch it makes no sense
-
-* Sun Aug  1 2010 Levente Farkas <lfarkas@lfarkas.org> - 3.2.7-5
-- reenable test and clean up contrib files
-
-* Tue Jul 27 2010 Levente Farkas <lfarkas@lfarkas.org> - 3.2.7-4
-- add Obsoletes for jna-examples
-
-* Sat Jul 24 2010 Levente Farkas <lfarkas@lfarkas.org> - 3.2.7-3
-- upstream 64bit fixes
-
-* Fri Jul 23 2010 Levente Farkas <lfarkas@lfarkas.org> - 3.2.7-2
-- Temporary hack for 64bit build
-
-* Thu Jul 22 2010 Levente Farkas <lfarkas@lfarkas.org> - 3.2.7-1
-- Rebase on upstream 3.2.7
-
-* Wed Jul 21 2010 Stanislav Ochotnicky <sochotnicky@redhat.com> - 3.2.4-6
-- Add maven depmap
-
-* Thu Apr 22 2010 Colin Walters <walters@verbum.org> - 3.2.4-5
-- Add patches to make the build happen with gcj
-
-* Wed Apr 21 2010 Colin Walters <walters@verbum.org> - 3.2.4-4
-- Fix the build by removing upstream's hardcoded md5
-
-* Thu Dec 17 2009 Levente Farkas <lfarkas@lfarkas.org> - 3.2.4-3
-- add proper ExclusiveArch
-
-* Thu Dec 17 2009 Alexander Kurtakov <akurtako@redhat.com> 3.2.4-2
-- Comment rhel ExclusiveArchs - not correct applies on Fedora.
-
-* Sat Nov 14 2009 Levente Farkas <lfarkas@lfarkas.org> - 3.2.4-1
-- Rebase on upstream 3.2.4
-
-* Thu Oct 29 2009 Lubomir Rintel <lkundrak@v3.sk> - 3.0.9-6
-- Add examples subpackage
-
-* Fri Jul 24 2009 Fedora Release Engineering <rel-eng@lists.fedoraproject.org> - 3.0.9-5
-- Rebuilt for https://fedoraproject.org/wiki/Fedora_12_Mass_Rebuild
-
-* Wed Feb 25 2009 Fedora Release Engineering <rel-eng@lists.fedoraproject.org> - 3.0.9-4
-- Rebuilt for https://fedoraproject.org/wiki/Fedora_11_Mass_Rebuild
-
-* Tue Dec 30 2008 Colin Walters <walters@redhat.com> - 3.0.9-3
-- Add patch to allow opening current process
-
-* Sun Nov 30 2008 Colin Walters <walters@redhat.com> - 3.0.9-2
-- Fix library mapping, remove upstreamed patches
-
-* Fri Oct 31 2008 Colin Walters <walters@redhat.com> - 3.0.9-1
-- Rebase on upstream 3.0.9
-
-* Tue Oct 14 2008 Colin Walters <walters@redhat.com> - 3.0.4-10.svn729
-- Add patch to support String[] returns
-
-* Wed Oct 01 2008 Colin Walters <walters@redhat.com> - 3.0.4-9.svn729
-- Add new patch to support NativeMapped[] which I want
-
-* Wed Oct 01 2008 Colin Walters <walters@redhat.com> - 3.0.4-8.svn729
-- Update to svn r729
-- drop upstreamed typemapper patch
-
-* Thu Sep 18 2008 Colin Walters <walters@redhat.com> - 3.0.4-7.svn700
-- Add patch to make typemapper always accessible
-- Add patch to skip cracktastic X11 test bits which currently fail
-
-* Tue Sep 09 2008 Colin Walters <walters@redhat.com> - 3.0.4-5.svn700
-- Update to upstream SVN r700; drop all now upstreamed patches
-
-* Sat Sep 06 2008 Colin Walters <walters@redhat.com> - 3.0.4-3.svn630
-- A few more patches for JGIR
-
-* Thu Sep 04 2008 Colin Walters <walters@redhat.com> - 3.0.4-2.svn630
-- Add two (sent upstream) patches that I need for JGIR
-
-* Thu Jul 31 2008 Colin Walters <walters@redhat.com> - 3.0.4-1.svn630
-- New upstream version, drop upstreamed patch parts
-- New patch jna-3.0.4-nomixedjar.patch which ensures that we don't
-  include the .so in the .jar
-
-* Fri Apr 04 2008 Colin Walters <walters@redhat.com> - 3.0.2-7
-- Add patch to use JPackage-compatible JNI library path
-- Do build debuginfo package
-- Refactor build patch greatly so it's hopefully upstreamable
-- Install .so directly to JNI directory, rather than inside jar
-- Clean up Requires/BuildRequires (thanks Mamoru Tasaka)
-
-* Sun Mar 30 2008 Conrad Meyer <konrad@tylerc.org> - 3.0.2-6
-- -javadocs should be -javadoc.
-- %%files section cleaned a bit.
-
-* Mon Mar 17 2008 Conrad Meyer <konrad@tylerc.org> - 3.0.2-5
-- -javadocs package should be in group "Documentation".
-
-* Mon Mar 17 2008 Conrad Meyer <konrad@tylerc.org> - 3.0.2-4
-- License should be LGPLv2+, not GPLv2+.
-- Several minor fixes.
-- Fix Requires in javadoc package.
-
-* Sun Mar 16 2008 Conrad Meyer <konrad@tylerc.org> - 3.0.2-3
-- Don't use internal libffi.
-
-* Thu Mar 6 2008 Conrad Meyer <konrad@tylerc.org> - 3.0.2-2
-- Don't pull in jars from the web.
-
-* Mon Mar 3 2008 Conrad Meyer <konrad@tylerc.org> - 3.0.2-1
-- Initial package.
+%license LICENSE AL2.0 LGPL2.1
+%doc README.md CHANGES.md
+%{_libdir}/libjnidispatch.so
