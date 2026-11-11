@@ -1,5 +1,6 @@
 sources:
   jna-5.19.1.tar.gz: 222d9f69e81f17cffe6a9cafb1cea89288d976ef
+  jna-5.17.0.tar.gz: 48a573f544387b96577a5b69aa4c772b0b8241f8
 removed_sources:
   jna-3.5.2.tar.bz2: 20f84d11f32c5110a8fb3d5cf1df7efcc7a86bec
   jna-5.18.1.tar.gz: 5433457f278090fb899f17a6a3da3cf13725a102
